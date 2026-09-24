@@ -1,0 +1,56 @@
+-- =====================================================================
+-- DEMO VERIFICATION - run in Snowsight after the pipeline deploys
+-- Change _TEST to _PROD to check the PROD environment.
+-- =====================================================================
+
+USE ROLE SYSADMIN;
+
+-- 1. One database per environment
+SHOW DATABASES LIKE 'TEST_CICD_DEMO%';
+
+-- 2. BRONZE / SILVER / GOLD - "options" column shows MANAGED ACCESS
+SHOW SCHEMAS IN DATABASE TEST_CICD_DEMO_TEST;
+
+-- 3. Access roles (RO / RW per layer)
+SHOW DATABASE ROLES IN DATABASE TEST_CICD_DEMO_TEST;
+SHOW GRANTS TO DATABASE ROLE TEST_CICD_DEMO_TEST.BRONZE_RW;
+SHOW FUTURE GRANTS IN SCHEMA TEST_CICD_DEMO_TEST.GOLD;
+
+-- 4. Functional roles and warehouse
+SHOW ROLES LIKE 'TEST_CICD_DEMO%';
+SHOW GRANTS TO ROLE TEST_CICD_DEMO_TEST_ENGINEER;
+SHOW GRANTS TO ROLE TEST_CICD_DEMO_TEST_ANALYST;
+SHOW WAREHOUSES LIKE 'TEST_CICD_DEMO%';
+
+-- =====================================================================
+-- OPTIONAL: prove managed access works (good moment in the client demo)
+-- =====================================================================
+USE ROLE SECURITYADMIN;
+GRANT ROLE TEST_CICD_DEMO_TEST_ENGINEER TO USER <YOUR_SNOWFLAKE_USER>;
+
+USE ROLE TEST_CICD_DEMO_TEST_ENGINEER;
+USE WAREHOUSE TEST_CICD_DEMO_TEST_WH;
+
+CREATE TABLE TEST_CICD_DEMO_TEST.BRONZE.DEMO_EFRONT_RAW (
+  ID        INT,
+  PAYLOAD   VARIANT,
+  LOADED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+INSERT INTO TEST_CICD_DEMO_TEST.BRONZE.DEMO_EFRONT_RAW (ID, PAYLOAD)
+  SELECT 1, PARSE_JSON('{"source": "eFront", "fund": "demo"}');
+
+SELECT * FROM TEST_CICD_DEMO_TEST.BRONZE.DEMO_EFRONT_RAW;
+
+-- This MUST FAIL: in a managed access schema the table creator cannot grant.
+GRANT SELECT ON TABLE TEST_CICD_DEMO_TEST.BRONZE.DEMO_EFRONT_RAW TO ROLE PUBLIC;
+
+-- Analyst can read GOLD but not BRONZE
+USE ROLE SECURITYADMIN;
+GRANT ROLE TEST_CICD_DEMO_TEST_ANALYST TO USER <YOUR_SNOWFLAKE_USER>;
+USE ROLE TEST_CICD_DEMO_TEST_ANALYST;
+SELECT * FROM TEST_CICD_DEMO_TEST.BRONZE.DEMO_EFRONT_RAW;   -- fails: no access
+
+-- Clean up the demo table (Terraform does not manage it)
+USE ROLE TEST_CICD_DEMO_TEST_ENGINEER;
+DROP TABLE IF EXISTS TEST_CICD_DEMO_TEST.BRONZE.DEMO_EFRONT_RAW;
