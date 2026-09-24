@@ -1,0 +1,42 @@
+name: Terraform destroy
+description: Delete everything Terraform created in one environment, then save the (now empty) state.
+
+inputs:
+  environment:
+    description: test or prod
+    required: true
+  terraform-version:
+    description: Terraform CLI version
+    required: false
+    default: "latest"
+
+runs:
+  using: composite
+  steps:
+    - name: Get saved state (tfstate branch)
+      uses: actions/checkout@v4
+      with:
+        ref: tfstate
+        path: tfstate
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform-version }}
+        terraform_wrapper: false
+
+    - name: terraform init
+      shell: bash
+      working-directory: terraform
+      run: terraform init -input=false -backend-config="path=../tfstate/test_cicd_demo-${{ inputs.environment }}.tfstate"
+
+    - name: terraform destroy
+      shell: bash
+      working-directory: terraform
+      run: terraform destroy -input=false -auto-approve -var-file=environments/${{ inputs.environment }}/terraform.tfvars
+
+    - name: Save state
+      if: always()
+      uses: ./.github/cd/save-state
+      with:
+        environment: ${{ inputs.environment }}
