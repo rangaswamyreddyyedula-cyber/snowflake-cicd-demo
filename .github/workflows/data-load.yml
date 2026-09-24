@@ -1,0 +1,70 @@
+# DATA - creates the demo tables and loads dummy data.
+# Separate from CD so the Terraform pipeline stays unchanged.
+#   - runs automatically after "CD - Deploy" succeeds on test or main
+#   - runs when files under snowflake/ change on test or main
+#   - can be started by hand (Actions -> Run workflow)
+#   test branch -> TEST database (automatic)
+#   main branch -> PROD database (waits for approval)
+name: Data - Tables and demo data
+
+on:
+  workflow_run:
+    workflows: ["CD - Deploy"]
+    types: [completed]
+    branches: [test, main]
+  push:
+    branches: [test, main]
+    paths:
+      - "snowflake/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SNOWFLAKE_USER: SVC_TERRAFORM_CICD
+  SNOWFLAKE_ROLE: TF_DEPLOY_ROLE
+  SNOWFLAKE_WAREHOUSE: TF_DEPLOY_WH
+
+jobs:
+  load-test:
+    name: Load data in TEST
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'test') ||
+      (github.event_name != 'workflow_run' && github.ref_name == 'test')
+    runs-on: ubuntu-latest
+    environment: test
+    concurrency:
+      group: data-test
+    env:
+      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME_TEST }}
+      SNOWFLAKE_ACCOUNT_NAME: ${{ secrets.SNOWFLAKE_ACCOUNT_NAME_TEST }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PAT_TEST }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: ./.github/cd/data-load
+        with:
+          environment: test
+
+  load-prod:
+    name: Load data in PROD
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name != 'workflow_run' && github.ref_name == 'main')
+    runs-on: ubuntu-latest
+    environment: prod
+    concurrency:
+      group: data-prod
+    env:
+      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME_PROD }}
+      SNOWFLAKE_ACCOUNT_NAME: ${{ secrets.SNOWFLAKE_ACCOUNT_NAME_PROD }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PAT_PROD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: ./.github/cd/data-load
+        with:
+          environment: prod

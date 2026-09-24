@@ -1,0 +1,25 @@
+name: Snowflake data load
+description: Create the demo tables, load dummy data and build SILVER and GOLD in one environment.
+
+inputs:
+  environment:
+    description: test or prod
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install Snowflake connector
+      shell: bash
+      run: pip install --quiet "snowflake-connector-python>=3.12"
+
+    - name: Run SQL files in snowflake/deploy
+      shell: bash
+      env:
+        TARGET_DATABASE: TEST_CICD_DEMO_${{ inputs.environment == 'prod' && 'PROD' || 'TEST' }}
+      run: python "${{ github.action_path }}/run_sql.py"
