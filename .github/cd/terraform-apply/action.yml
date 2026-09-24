@@ -1,0 +1,36 @@
+name: Terraform apply
+description: Plan and apply one environment, then save the state. Approval comes from the GitHub Environment on the job.
+
+inputs:
+  environment:
+    description: test or prod
+    required: true
+  terraform-version:
+    description: Terraform CLI version
+    required: false
+    default: "latest"
+
+runs:
+  using: composite
+  steps:
+    - name: Plan
+      uses: ./.github/ci/terraform-plan
+      with:
+        environment: ${{ inputs.environment }}
+        terraform-version: ${{ inputs.terraform-version }}
+
+    - name: terraform apply
+      shell: bash
+      working-directory: terraform
+      run: terraform apply -input=false tfplan
+
+    - name: Save state
+      if: always()
+      uses: ./.github/cd/save-state
+      with:
+        environment: ${{ inputs.environment }}
+
+    - name: Show outputs
+      shell: bash
+      working-directory: terraform
+      run: terraform output
