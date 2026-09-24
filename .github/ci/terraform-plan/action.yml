@@ -1,0 +1,47 @@
+name: Terraform plan
+description: Get the saved state, run terraform plan for one environment, show the plan in the job summary.
+
+inputs:
+  environment:
+    description: test or prod
+    required: true
+  terraform-version:
+    description: Terraform CLI version
+    required: false
+    default: "latest"
+
+runs:
+  using: composite
+  steps:
+    - name: Get saved state (tfstate branch)
+      uses: actions/checkout@v4
+      with:
+        ref: tfstate
+        path: tfstate
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform-version }}
+        terraform_wrapper: false
+
+    - name: terraform init
+      shell: bash
+      working-directory: terraform
+      run: terraform init -input=false -backend-config="path=../tfstate/test_cicd_demo-${{ inputs.environment }}.tfstate"
+
+    - name: terraform plan
+      shell: bash
+      working-directory: terraform
+      run: terraform plan -input=false -var-file=environments/${{ inputs.environment }}/terraform.tfvars -out=tfplan
+
+    - name: Show plan in job summary
+      shell: bash
+      working-directory: terraform
+      run: |
+        {
+          echo "## Terraform plan - ${{ inputs.environment }}"
+          echo '```'
+          terraform show -no-color tfplan
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
