@@ -1,0 +1,25 @@
+name: Save Terraform state
+description: Commit the updated state file back to the tfstate branch.
+
+inputs:
+  environment:
+    description: test or prod
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Commit and push state
+      shell: bash
+      working-directory: tfstate
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add -f -A .
+        if git diff --cached --quiet; then
+          echo "No state changes to save."
+          exit 0
+        fi
+        git commit -m "state: ${{ inputs.environment }} (run ${{ github.run_id }})"
+        git pull --rebase origin tfstate
+        git push origin HEAD:tfstate
