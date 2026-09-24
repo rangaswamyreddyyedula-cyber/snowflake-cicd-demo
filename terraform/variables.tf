@@ -17,7 +17,7 @@ variable "environment" {
 variable "schemas" {
   description = "Medallion layers, each created as a managed access schema."
   type        = list(string)
-  default     = ["BRONZE", "SILVER", "GOLD"]
+  default     = ["BRONZE", "SILVER", "GOLD" ,"SEMANTIC"]
 }
 
 variable "warehouse_size" {
