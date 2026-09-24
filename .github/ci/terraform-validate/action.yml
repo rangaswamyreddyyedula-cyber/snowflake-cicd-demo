@@ -1,0 +1,42 @@
+name: Terraform validate
+description: Check formatting, syntax and best practices (no Snowflake connection needed).
+
+inputs:
+  terraform-version:
+    description: Terraform CLI version
+    required: false
+    default: "latest"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform-version }}
+        terraform_wrapper: false
+
+    - name: terraform fmt (formatting - warns only)
+      shell: bash
+      working-directory: terraform
+      run: terraform fmt -check -recursive -diff || echo "::warning::Formatting differences found (not blocking)."
+
+    - name: terraform init (no state)
+      shell: bash
+      working-directory: terraform
+      run: terraform init -backend=false -input=false
+
+    - name: terraform validate (syntax)
+      shell: bash
+      working-directory: terraform
+      run: terraform validate
+
+    - name: Setup TFLint
+      uses: terraform-linters/setup-tflint@v4
+
+    - name: tflint (best practices)
+      shell: bash
+      working-directory: terraform
+      run: |
+        tflint --init --config "$GITHUB_WORKSPACE/.tflint.hcl"
+        tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl" --minimum-failure-severity=error
