@@ -1,0 +1,28 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Keys and secrets - never commit
+*.p8
+*.pem
+*.key
+*.pub
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# State branch checkout (pipeline only)
+tfstate/
