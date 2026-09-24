@@ -1,0 +1,55 @@
+# CD - deploys to Snowflake when a pull request is merged.
+#   merge into test -> deploy TEST (automatic)
+#   merge into main -> deploy PROD (waits for approval)
+name: CD - Deploy
+
+on:
+  push:
+    branches: [test, main]
+    paths:
+      - "terraform/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to save state to the tfstate branch
+
+env:
+  TF_IN_AUTOMATION: "true"
+  SNOWFLAKE_USER: SVC_TERRAFORM_CICD
+  SNOWFLAKE_ROLE: TF_DEPLOY_ROLE
+  SNOWFLAKE_WAREHOUSE: TF_DEPLOY_WH
+
+jobs:
+  deploy-test:
+    name: Deploy to TEST
+    if: github.ref_name == 'test'
+    runs-on: ubuntu-latest
+    environment: test
+    concurrency:
+      group: terraform-test
+    env:
+      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME_TEST }}
+      SNOWFLAKE_ACCOUNT_NAME: ${{ secrets.SNOWFLAKE_ACCOUNT_NAME_TEST }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PAT_TEST }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/cd/terraform-apply
+        with:
+          environment: test
+
+  deploy-prod:
+    name: Deploy to PROD
+    if: github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    environment: prod
+    concurrency:
+      group: terraform-prod
+    env:
+      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME_PROD }}
+      SNOWFLAKE_ACCOUNT_NAME: ${{ secrets.SNOWFLAKE_ACCOUNT_NAME_PROD }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PAT_PROD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/cd/terraform-apply
+        with:
+          environment: prod
