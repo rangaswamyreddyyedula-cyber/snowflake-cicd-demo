@@ -1,0 +1,59 @@
+# Manual cleanup after the demo. Actions tab -> this workflow -> Run workflow.
+name: Demo cleanup - Terraform destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to destroy
+        required: true
+        type: choice
+        options: [test, prod]
+      confirm:
+        description: Type DESTROY to confirm
+        required: true
+        type: string
+
+permissions:
+  contents: write   # needed to save state to the tfstate branch
+
+env:
+  TF_IN_AUTOMATION: "true"
+  SNOWFLAKE_USER: SVC_TERRAFORM_CICD
+  SNOWFLAKE_ROLE: TF_DEPLOY_ROLE
+  SNOWFLAKE_WAREHOUSE: TF_DEPLOY_WH
+
+jobs:
+  destroy-test:
+    name: Destroy TEST
+    if: inputs.environment == 'test' && inputs.confirm == 'DESTROY'
+    runs-on: ubuntu-latest
+    environment: test
+    concurrency:
+      group: terraform-test
+    env:
+      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME_TEST }}
+      SNOWFLAKE_ACCOUNT_NAME: ${{ secrets.SNOWFLAKE_ACCOUNT_NAME_TEST }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PAT_TEST }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/cd/terraform-destroy
+        with:
+          environment: test
+
+  destroy-prod:
+    name: Destroy PROD
+    if: inputs.environment == 'prod' && inputs.confirm == 'DESTROY'
+    runs-on: ubuntu-latest
+    environment: prod
+    concurrency:
+      group: terraform-prod
+    env:
+      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME_PROD }}
+      SNOWFLAKE_ACCOUNT_NAME: ${{ secrets.SNOWFLAKE_ACCOUNT_NAME_PROD }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PAT_PROD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/cd/terraform-destroy
+        with:
+          environment: prod
