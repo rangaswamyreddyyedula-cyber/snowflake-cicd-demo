@@ -1,0 +1,65 @@
+# CI - checks the code. It never changes Snowflake.
+#   push to dev          -> checks + plan against TEST
+#   pull request -> test -> checks + plan against TEST
+#   pull request -> main -> checks + plan against PROD
+name: CI - Validate and plan
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [test, main]
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  SNOWFLAKE_USER: SVC_TERRAFORM_CICD
+  SNOWFLAKE_ROLE: TF_DEPLOY_ROLE
+  SNOWFLAKE_WAREHOUSE: TF_DEPLOY_WH
+
+jobs:
+  validate:
+    name: Format, validate, lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/ci/terraform-validate
+
+  security-scan:
+    name: Security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/ci/security-scan
+
+  plan-test:
+    name: Plan for TEST
+    if: github.base_ref != 'main'
+    needs: [validate, security-scan]
+    runs-on: ubuntu-latest
+    env:
+      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME_TEST }}
+      SNOWFLAKE_ACCOUNT_NAME: ${{ secrets.SNOWFLAKE_ACCOUNT_NAME_TEST }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PAT_TEST }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/ci/terraform-plan
+        with:
+          environment: test
+
+  plan-prod:
+    name: Plan for PROD
+    if: github.base_ref == 'main'
+    needs: [validate, security-scan]
+    runs-on: ubuntu-latest
+    env:
+      SNOWFLAKE_ORGANIZATION_NAME: ${{ secrets.SNOWFLAKE_ORGANIZATION_NAME_PROD }}
+      SNOWFLAKE_ACCOUNT_NAME: ${{ secrets.SNOWFLAKE_ACCOUNT_NAME_PROD }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PAT_PROD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/ci/terraform-plan
+        with:
+          environment: prod
