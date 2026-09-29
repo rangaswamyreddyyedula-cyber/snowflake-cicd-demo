@@ -1,11 +1,11 @@
 -- =====================================================================
 -- Check the demo data in Snowsight (not run by the pipeline)
--- For PROD, replace _TEST with _PROD everywhere.
+-- For TEST or PROD, replace DEV with TEST or PROD in the names everywhere.
 -- =====================================================================
 
 USE ROLE SYSADMIN;
-USE DATABASE TEST_CICD_DEMO_TEST;
-USE WAREHOUSE TEST_CICD_DEMO_TEST_WH;
+USE DATABASE THREEIGROUP_DEV_DB;
+USE WAREHOUSE THREEIGROUP_DEV_WH;
 
 -- 1. Row counts per layer (expected: 4, 11, 20 in BRONZE; 4, 10, 20 in SILVER)
 SELECT 'BRONZE.EFRONT_FUNDS_RAW'           AS TABLE_NAME, COUNT(*) AS ROWS_LOADED FROM BRONZE.EFRONT_FUNDS_RAW
@@ -26,8 +26,7 @@ SELECT * FROM GOLD.V_INVESTMENT_LATEST_VALUE ORDER BY MOIC DESC;
 
 -- 4. Security: the ANALYST role reads GOLD but not BRONZE
 --    (first grant the role to yourself: USE ROLE SECURITYADMIN;
---     GRANT ROLE TEST_CICD_DEMO_TEST_ANALYST TO USER <YOUR_SNOWFLAKE_USER>;)
-USE ROLE TEST_CICD_DEMO_TEST_ANALYST;
-USE WAREHOUSE TEST_CICD_DEMO_TEST_WH;
-SELECT * FROM TEST_CICD_DEMO_TEST.GOLD.V_FUND_PERFORMANCE;     -- works
-SELECT * FROM TEST_CICD_DEMO_TEST.BRONZE.EFRONT_FUNDS_RAW;     -- fails: no access
+--     GRANT ROLE THREEIGROUP_DEV_ANALYST TO USER <YOUR_SNOWFLAKE_USER>;)
+USE ROLE THREEIGROUP_DEV_ANALYST;
+USE WAREHOUSE THREEIGROUP_DEV_WH;
+SELECT * FROM THREEIGROUP_DEV_DB.GOLD.V_FUND_PERFORMANCE;     -- works
