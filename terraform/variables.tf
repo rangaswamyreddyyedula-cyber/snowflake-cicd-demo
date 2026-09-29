@@ -1,7 +1,7 @@
 variable "project" {
   description = "Project name, used as the database and role prefix."
   type        = string
-  default     = "TEST_CICD_DEMO"
+  default     = "THREEIGROUP"
 }
 
 variable "environment" {
@@ -17,7 +17,7 @@ variable "environment" {
 variable "schemas" {
   description = "Medallion layers, each created as a managed access schema."
   type        = list(string)
-  default     = ["BRONZE", "SILVER", "GOLD" ,"SEMANTIC","PUBLISHED","DEMO"]
+  default     = ["BRONZE", "SILVER", "GOLD" ]
 }
 
 variable "warehouse_size" {
