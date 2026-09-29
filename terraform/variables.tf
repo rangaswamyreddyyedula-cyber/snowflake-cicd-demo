@@ -1,7 +1,7 @@
 variable "project" {
   description = "Project name, used as the database and role prefix."
   type        = string
-  default     = "THREEIGROUP"
+  default     = "TEST_CICD_DEMO"
 }
 
 variable "environment" {
